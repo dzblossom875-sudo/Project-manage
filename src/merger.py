@@ -240,6 +240,10 @@ def merge(
 
     result = result[OUTPUT_COLUMNS]
 
+    # 修复笔误："已跟进，根据中" → "已跟进，跟进中"
+    if "跟进和投放状态" in result.columns:
+        result["跟进和投放状态"] = result["跟进和投放状态"].replace("已跟进，根据中", "已跟进，跟进中")
+
     # 打印统计信息
     new_count = sum(1 for t in result["变更类型"] if t == "新增")
     changed_count = sum(1 for t in result["变更类型"] if t == "状态变更")
