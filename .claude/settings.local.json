@@ -1,0 +1,11 @@
+{
+  "env": {
+    "PATH": "/d/install:/d/install/Scripts:/mingw64/bin:/usr/bin:/c/Users/lenovo/bin:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(\"/d/install/python.exe\" main.py)",
+      "Bash(\"/d/install/python.exe\" -c \":*)"
+    ]
+  }
+}
