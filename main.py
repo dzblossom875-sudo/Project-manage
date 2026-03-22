@@ -7,7 +7,7 @@
 1. 读取 data/input/ 中最新的xlsx基准文件
 2. 分别爬取上交所和深交所的持有型ABS项目
 3. 与基准文件比对，标注新增和状态变更
-4. 导出含变更标注的Excel到 data/output/
+4. 导出含变更标注的Excel和HTML Dashboard到 data/output/
 
 停止条件: 每个交易所爬取时，与基准重复项目>=3个即停止翻页
 搜索策略: 选ABS品种后翻页+本地过滤持有型关键词
@@ -17,12 +17,14 @@
     python main.py --headless         # 无头模式
     python main.py --exchange sse     # 只爬上交所
     python main.py --exchange szse    # 只爬深交所
+    python main.py --export-only      # 跳过爬取，仅导出（用于测试）
 """
 
 import io
 import sys
 import os
 import argparse
+from datetime import datetime
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
@@ -37,6 +39,11 @@ def parse_args():
         choices=["sse", "szse", "both"],
         default="both",
         help="选择交易所: sse-上交所, szse-深交所, both-两者",
+    )
+    parser.add_argument(
+        "--export-only",
+        action="store_true",
+        help="跳过爬取，仅导出（用于测试输出层）",
     )
     return parser.parse_args()
 
@@ -65,8 +72,8 @@ def main():
     szse_projects = []
     headless = args.headless
 
-    # Step 2: 爬取上交所
-    if args.exchange in ["sse", "both"]:
+    # Step 2: 爬取上交所（如果不是仅导出模式）
+    if not args.export_only and args.exchange in ["sse", "both"]:
         print("-" * 60)
         print("开始爬取上交所...")
         print("-" * 60)
@@ -80,8 +87,8 @@ def main():
             print(f"上交所爬取失败: {e}")
         print()
 
-    # Step 3: 爬取深交所
-    if args.exchange in ["szse", "both"]:
+    # Step 3: 爬取深交所（如果不是仅导出模式）
+    if not args.export_only and args.exchange in ["szse", "both"]:
         print("-" * 60)
         print("开始爬取深交所...")
         print("-" * 60)
@@ -95,24 +102,45 @@ def main():
             print(f"深交所爬取失败: {e}")
         print()
 
-    # Step 4: 导出 (基准 + 爬取合并)
-    from data_exporter import export_projects
+    # Step 4: 导出（使用新的输出层架构）
+    from merger import merge
+    from output.excel_exporter import export_excel
+    from output.html_exporter import export_html
+
+    # 爬取汇总
+    print(f"\n=== 爬取汇总 ===")
+    print(f"上交所: {len(sse_projects)} 条")
+    print(f"深交所: {len(szse_projects)} 条")
+    print(f"================")
 
     if sse_projects or szse_projects or baseline_df is not None:
         print("-" * 60)
         print("正在合并基准数据与爬取数据...")
         print("-" * 60)
-        output_path = export_projects(
-            sse_projects,
-            szse_projects,
-            output_dir="data/output",
-            baseline_df=baseline_df,
-            baseline_index=baseline_index if baseline_index else None,
-        )
-        if output_path:
-            print(f"\n>> 导出成功: {output_path}")
+
+        # 合并数据
+        merged_df = merge(sse_projects, szse_projects, baseline_df)
+
+        if not merged_df.empty:
+            # 生成时间戳
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            os.makedirs('data/output', exist_ok=True)
+
+            # 导出 Excel
+            excel_path = f'data/output/持有型ABS项目汇总_{timestamp}.xlsx'
+            print(f"\n导出 Excel: {excel_path}")
+            export_excel(merged_df, excel_path)
+
+            # 导出 HTML Dashboard
+            html_path = f'data/output/持有型ABS项目追踪_{timestamp}.html'
+            print(f"导出 HTML: {html_path}")
+            export_html(merged_df, html_path)
+
+            print(f"\n>> 导出成功")
+            print(f"   Excel: {excel_path}")
+            print(f"   HTML:  {html_path}")
         else:
-            print("\n>> 导出失败")
+            print("\n>> 没有数据可导出")
     else:
         print("\n没有获取到任何项目数据, 也没有基准文件")
 

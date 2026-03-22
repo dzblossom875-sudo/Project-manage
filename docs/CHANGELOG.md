@@ -4,6 +4,39 @@
 
 ---
 
+## [v2.1] - 2026-03-22
+
+### refactor: 架构重构 — 输出层解耦
+
+**新增模块：**
+- `merger.py`：合并逻辑独立，返回标准化 DataFrame，不负责文件写入
+  - 字段映射：原"项目状态"→"交易所审批状态"、原"更新日期"→"交易所系统更新日期"、原"投放和跟进情况"→"跟进和投放状态"
+  - 新增字段："项目发行状态"（默认"未发行"）、"预计发行时间"（默认空）
+  - 比对字段更新为：["交易所审批状态", "拟发行金额(亿元)", "计划管理人"]
+
+- `output/` 目录：解耦的输出层
+  - `excel_exporter.py`：提交版 Excel，4 个 Sheet（全部项目/新增项目/状态变更/跟进状态汇总）
+    - 微软雅黑字体、深蓝表头、自动列宽（中文按2计算）
+    - 新增行绿色底色 RGB(198,239,206)，状态变更行黄色底色 RGB(255,235,156)
+    - 全部项目 Sheet 含合计行（拟发行金额列用 SUM 公式）
+  - `html_exporter.py`：单文件自包含 HTML Dashboard
+    - 数据序列化为 JSON 内嵌，支持筛选/排序/分组/行展开
+    - 跟进状态可 inline 修改，变更日志实时记录
+    - 支持下载 CSV/XLS
+
+- `scripts/recalc.py`：Excel 公式验证脚本，返回 `{"status": "success"}` 或错误信息
+
+**修改：**
+- `main.py`：使用新架构（merger + output），添加 `--export-only` 参数用于测试
+- `data_exporter.py`：添加 deprecation 注释，保留以兼容旧版
+
+**验证：**
+- `python -c "from merger import merge; print('merger OK')"` ✓
+- `python main.py --export-only` 成功导出 Excel 和 HTML
+- `python scripts/recalc.py <excel>` 返回 success
+
+---
+
 ## [docs] - 2026-03-22
 
 ### 项目规范整理

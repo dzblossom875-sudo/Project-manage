@@ -1,11 +1,23 @@
 """
 数据汇总、基准合并和Excel导出模块
 
+DEPRECATED: 此模块已废弃，请使用 merger.py + output/excel_exporter.py 代替
+此文件保留以兼容旧版调用，新代码请使用新的输出层架构
+
 核心逻辑:
   以基准文件为底，合并爬取的新数据:
   - 基准中已有 + 爬取中也有 → 用爬取数据更新字段，标注"状态变更"或"无变化"
   - 基准中已有 + 爬取中没有 → 保留基准原样，标注"无变化"
   - 基准中没有 + 爬取中新增 → 追加，标注"新增"
+
+新版调用方式:
+    from merger import merge
+    from output.excel_exporter import export_excel
+    from output.html_exporter import export_html
+
+    merged_df = merge(sse_projects, szse_projects, baseline_df)
+    export_excel(merged_df, excel_path)
+    export_html(merged_df, html_path)
 """
 
 import os
