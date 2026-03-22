@@ -257,16 +257,20 @@ def export_excel(merged_df: pd.DataFrame, output_path: str) -> None:
     amount_col_name = "拟发行金额(亿元)"
 
     if follow_col in df_sorted.columns and amount_col_name in df_sorted.columns:
+        # 确保金额列为数值类型
+        df_summary = df_sorted.copy()
+        df_summary[amount_col_name] = pd.to_numeric(df_summary[amount_col_name], errors='coerce').fillna(0)
+
         # 分组统计
-        groups = df_sorted.groupby(follow_col, sort=False).agg({
+        groups = df_summary.groupby(follow_col, sort=False).agg({
             "债券名称": "count",
             amount_col_name: "sum"
         }).reset_index()
         groups.columns = ["跟进和投放状态", "项目数量", "拟发行金额合计(亿元)"]
 
         # 添加总计行
-        total_projects = len(df_sorted)
-        total_amount = df_sorted[amount_col_name].sum()
+        total_projects = len(df_summary)
+        total_amount = df_summary[amount_col_name].sum()
 
         # 写入表头
         headers = ["跟进和投放状态", "项目数量", "拟发行金额合计(亿元)"]
